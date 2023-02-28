@@ -139,11 +139,39 @@ def part3_retarget_func(T_pose_bvh_path, A_pose_bvh_path):
         两个bvh的joint name顺序可能不一致哦(
         as_euler时也需要大写的XYZ
     """
-    T_joint_name, T_joint_parent, T_joint_offse = part1_calculate_T_pose(T_pose_bvh_path)
-    A_joint_name, A_joint_parent, A_joint_offse = part1_calculate_T_pose(A_pose_bvh_path)
-    T_motion_data = load_motion_data(T_pose_bvh_path)
+    T_joint_name, T_joint_parent, T_joint_offset = part1_calculate_T_pose(T_pose_bvh_path)
+    A_joint_name, A_joint_parent, A_joint_offset = part1_calculate_T_pose(A_pose_bvh_path)
+    joint_num = len(T_joint_name)
+    A_to_T = [-1 for _ in range(joint_num)]
+    T_to_A = [-1 for _ in range(joint_num)]
+    # for i,j,k,l in zip(T_joint_name, T_joint_offset, A_joint_name, A_joint_offset):
+    #     print(i,j,k,l)
+    for i in range(joint_num):
+        A_joint_parent[i] = T_joint_parent[i]
+        for j in range(joint_num):
+            if T_joint_name[i] == A_joint_name[j]:
+                A_to_T[j] = i
+                T_to_A[i] = j
+                break
+    # for i in range(joint_num):
+    #     print(T_joint_name[i], A_joint_name[T_to_A[i]], T_joint_parent[i], A_joint_parent[T_to_A[i]], T_joint_offset[i], A_joint_offset[T_to_A[i]])
     A_motion_data = load_motion_data(A_pose_bvh_path)
-    motion_data = None
+    motion_data = []
+    for frame_data in A_motion_data:
+        new_frame_data = frame_data[:3].tolist()
+        frame_data = frame_data[3:]
+        for i in range(joint_num):
+            j = T_to_A[i]
+            if A_joint_name[j] == 'lShoulder':
+                new_frame_data += (R.from_euler('XYZ', frame_data[j*3 : j*3+3], degrees=True) * R.from_euler('XYZ', [0, 0, 45], degrees=True)).as_euler('XYZ', degrees=True).tolist()
+            elif A_joint_name[j] == 'rShoulder':
+                new_frame_data += (R.from_euler('XYZ', frame_data[j*3 : j*3+3], degrees=True) * R.from_euler('XYZ', [0, 0, -45], degrees=True)).as_euler('XYZ', degrees=True).tolist()
+            else:
+                new_frame_data += frame_data[j*3 : j*3+3].tolist()
+        new_frame_data = np.array(new_frame_data)
+        motion_data.append(new_frame_data)
+    motion_data = np.array(motion_data)
+    print(motion_data.shape)
     return motion_data
 
 
