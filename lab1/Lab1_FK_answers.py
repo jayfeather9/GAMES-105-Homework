@@ -31,9 +31,6 @@ def load_bvh_model(lines, pos, father_index):
     # print(joint_type)
     assert joint_type == "End" or joint_type == "JOINT" or joint_type == "ROOT", "Bad joint name"
 
-    global index_cnt
-    cur_index = index_cnt
-    index_cnt += 1
     joint_name = []
     joint_parent = [father_index]
     tmp_offsets = get_re_result(r"OFFSET\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)", lines[pos+2], "No OFFSET lines")
@@ -42,18 +39,23 @@ def load_bvh_model(lines, pos, father_index):
         float_offsets.append(float(tmp_offsets[i]))
     offsets = [float_offsets]
     if joint_type == "End":
-        joint_name.append(get_re_result(r"End\s*(\w*)", lines[pos], "No End")[0])
+        joint_name = None
         # offsets.append(get_re_result(r"\sOFFSET\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)", lines[pos+2], "No OFFSET lines"))
         return joint_name, joint_parent, offsets, pos+4
+    
+    global index_cnt
+    cur_index = index_cnt
+    index_cnt += 1
     joint_name.append(get_re_result(r"JOINT\s*(\w*)", lines[pos], "No JOINT")[0] if joint_type == "JOINT" else get_re_result(r"ROOT\s*(\w*)", lines[pos], "No JOINT")[0])
     # print(f"find {joint_name}")
     # channels = get_re_result(r"\sCHANNELS\s*([\w\s]*)", lines[pos+3], "No CHANNELS lines")
     pos = pos + 4
     while "}" not in lines[pos]:
         tmp_joint_name, tmp_joint_parent, tmp_offsets, pos = load_bvh_model(lines, pos, cur_index)
-        joint_name += tmp_joint_name
-        joint_parent += tmp_joint_parent
-        offsets += tmp_offsets
+        if tmp_joint_name:
+            joint_name += tmp_joint_name
+            joint_parent += tmp_joint_parent
+            offsets += tmp_offsets
         # print(lines[pos])
     return joint_name, joint_parent, offsets, pos+1
 
@@ -101,9 +103,27 @@ def part2_forward_kinematics(joint_name, joint_parent, joint_offset, motion_data
         1. joint_orientations的四元数顺序为(x, y, z, w)
         2. from_euler时注意使用大写的XYZ
     """
-    
-    joint_positions = None
-    joint_orientations = None
+    motion_data = motion_data[frame_id]
+    root_pos = motion_data[0:3] # Front 3 is position X, Y, Z
+    motion_data = motion_data[3:]
+    rotations = []
+    # print(len(joint_name))
+    for i in range(len(joint_offset)):
+        # print(i,motion_data[i*3 : i*3+3])
+        rotations.append(R.from_euler('XYZ', motion_data[i*3 : i*3+3], degrees=True))
+    joint_positions = []
+    joint_orientations = []
+    for i in range(len(joint_offset)):
+        parent = joint_parent[i]
+        if parent == -1:
+            joint_orientations.append(rotations[0].as_quat())
+            joint_positions.append(root_pos)
+        else:
+            # print(parent, i)
+            joint_orientations.append((R.from_quat(joint_orientations[parent]) * rotations[i]).as_quat())
+            joint_positions.append(joint_positions[parent] + R.from_quat(joint_orientations[parent]).as_matrix() @ joint_offset[i])
+    joint_positions = np.array(joint_positions)
+    joint_orientations = np.array(joint_orientations)
     return joint_positions, joint_orientations
 
 
