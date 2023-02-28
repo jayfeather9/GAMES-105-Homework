@@ -20,6 +20,7 @@ def load_motion_data(bvh_file_path):
 
 
 def get_re_result(regex_pattern, target_str, assertion_information="Bad regex!"):
+    """进行正则表达式search匹配并返回需要匹配的目标的tuple"""
     match_result = re.search(regex_pattern, target_str)
     assert match_result is not None, assertion_information
     return match_result.groups()
@@ -27,6 +28,7 @@ def get_re_result(regex_pattern, target_str, assertion_information="Bad regex!")
 
 index_cnt = 0
 def load_bvh_model(lines, pos, father_index):
+    """递归读取bvh中的模型信息，lines为readlines后的bvh，pos是当前读取到第几行，father_index是该节点的父节点"""
     joint_type = lines[pos].strip().split()[0]
     # print(joint_type)
     assert joint_type == "End" or joint_type == "JOINT" or joint_type == "ROOT", "Bad joint name"
@@ -137,6 +139,10 @@ def part3_retarget_func(T_pose_bvh_path, A_pose_bvh_path):
         两个bvh的joint name顺序可能不一致哦(
         as_euler时也需要大写的XYZ
     """
+    T_joint_name, T_joint_parent, T_joint_offse = part1_calculate_T_pose(T_pose_bvh_path)
+    A_joint_name, A_joint_parent, A_joint_offse = part1_calculate_T_pose(A_pose_bvh_path)
+    T_motion_data = load_motion_data(T_pose_bvh_path)
+    A_motion_data = load_motion_data(A_pose_bvh_path)
     motion_data = None
     return motion_data
 
