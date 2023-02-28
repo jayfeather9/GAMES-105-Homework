@@ -1,4 +1,5 @@
 import numpy as np
+import re
 from scipy.spatial.transform import Rotation as R
 
 def load_motion_data(bvh_file_path):
@@ -18,6 +19,45 @@ def load_motion_data(bvh_file_path):
     return motion_data
 
 
+def get_re_result(regex_pattern, target_str, assertion_information="Bad regex!"):
+    match_result = re.search(regex_pattern, target_str)
+    assert match_result is not None, assertion_information
+    return match_result.groups()
+
+
+index_cnt = 0
+def load_bvh_model(lines, pos, father_index):
+    joint_type = lines[pos].strip().split()[0]
+    # print(joint_type)
+    assert joint_type == "End" or joint_type == "JOINT" or joint_type == "ROOT", "Bad joint name"
+
+    global index_cnt
+    cur_index = index_cnt
+    index_cnt += 1
+    joint_name = []
+    joint_parent = [father_index]
+    tmp_offsets = get_re_result(r"OFFSET\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)", lines[pos+2], "No OFFSET lines")
+    float_offsets = []
+    for i in range(len(tmp_offsets)):
+        float_offsets.append(float(tmp_offsets[i]))
+    offsets = [float_offsets]
+    if joint_type == "End":
+        joint_name.append(get_re_result(r"End\s*(\w*)", lines[pos], "No End")[0])
+        # offsets.append(get_re_result(r"\sOFFSET\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)", lines[pos+2], "No OFFSET lines"))
+        return joint_name, joint_parent, offsets, pos+4
+    joint_name.append(get_re_result(r"JOINT\s*(\w*)", lines[pos], "No JOINT")[0] if joint_type == "JOINT" else get_re_result(r"ROOT\s*(\w*)", lines[pos], "No JOINT")[0])
+    # print(f"find {joint_name}")
+    # channels = get_re_result(r"\sCHANNELS\s*([\w\s]*)", lines[pos+3], "No CHANNELS lines")
+    pos = pos + 4
+    while "}" not in lines[pos]:
+        tmp_joint_name, tmp_joint_parent, tmp_offsets, pos = load_bvh_model(lines, pos, cur_index)
+        joint_name += tmp_joint_name
+        joint_parent += tmp_joint_parent
+        offsets += tmp_offsets
+        # print(lines[pos])
+    return joint_name, joint_parent, offsets, pos+1
+
+
 
 def part1_calculate_T_pose(bvh_file_path):
     """请填写以下内容
@@ -30,10 +70,23 @@ def part1_calculate_T_pose(bvh_file_path):
     Tips:
         joint_name顺序应该和bvh一致
     """
-    joint_name = None
-    joint_parent = None
-    joint_offset = None
+    f = open(bvh_file_path, 'r')
+    lines = f.readlines()
+    f.close()
+
+    get_re_result(r"HIERARCHY", lines[0], "Bad first line no HIERARCHY")
+    # get_re_result(r"ROOT\s(\w*)", lines[1], "Bad second line no ROOT")
+    # print(lines[3])
+    # # OFFSET   0.000000   0.000000   0.000000
+    # offsets = get_re_result(r"OFFSET\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)\s*([-]*[0-9]\.[0-9]*)", lines[3], "No ROOT OFFSET lines")
+    # channels = get_re_result(r"\sCHANNELS\s([\w\s]*)", lines[4], "No ROOT CHANNELS lines")
+    joint_name, joint_parent, tmp_joint_offset, pos = load_bvh_model(lines, 1, -1)
+    # for i in range(len(joint_name)):
+    #     print(f"{i}, {joint_name[i]}, {joint_parent[i]}, {tmp_joint_offset[i]}")
+    joint_offset = np.array(tmp_joint_offset)
+    # print(joint_offset)
     return joint_name, joint_parent, joint_offset
+
 
 
 def part2_forward_kinematics(joint_name, joint_parent, joint_offset, motion_data, frame_id):
@@ -48,6 +101,7 @@ def part2_forward_kinematics(joint_name, joint_parent, joint_offset, motion_data
         1. joint_orientations的四元数顺序为(x, y, z, w)
         2. from_euler时注意使用大写的XYZ
     """
+    
     joint_positions = None
     joint_orientations = None
     return joint_positions, joint_orientations
@@ -65,3 +119,7 @@ def part3_retarget_func(T_pose_bvh_path, A_pose_bvh_path):
     """
     motion_data = None
     return motion_data
+
+
+if __name__ == "__main__":
+    part1_calculate_T_pose("data/walk60.bvh")

@@ -184,5 +184,3 @@ SFU-Mocap: https://github.com/ubisoft/ubisoft-laforge-animation-dataset
 需要提交的文件是`Lab1_FK_answers.py`和`Lab2_IK_answers.py`。如果你有想要展示的东西，也可以额外提交一个zip(文件大小请不要超过20M)
 
 如有问题或Bug，可以在issue，QQ群和我们的[课程讨论版](https://github.com/GAMES-105/GAMES-105/discussions)内进行讨论。
-
-test
