@@ -163,9 +163,9 @@ def part3_retarget_func(T_pose_bvh_path, A_pose_bvh_path):
         for i in range(joint_num):
             j = T_to_A[i]
             if A_joint_name[j] == 'lShoulder':
-                new_frame_data += (R.from_euler('XYZ', frame_data[j*3 : j*3+3], degrees=True) * R.from_euler('XYZ', [0, 0, 45], degrees=True)).as_euler('XYZ', degrees=True).tolist()
-            elif A_joint_name[j] == 'rShoulder':
                 new_frame_data += (R.from_euler('XYZ', frame_data[j*3 : j*3+3], degrees=True) * R.from_euler('XYZ', [0, 0, -45], degrees=True)).as_euler('XYZ', degrees=True).tolist()
+            elif A_joint_name[j] == 'rShoulder':
+                new_frame_data += (R.from_euler('XYZ', frame_data[j*3 : j*3+3], degrees=True) * R.from_euler('XYZ', [0, 0, 45], degrees=True)).as_euler('XYZ', degrees=True).tolist()
             else:
                 new_frame_data += frame_data[j*3 : j*3+3].tolist()
         new_frame_data = np.array(new_frame_data)
